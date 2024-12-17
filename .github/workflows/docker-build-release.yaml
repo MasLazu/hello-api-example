@@ -76,5 +76,10 @@ jobs:
 
           # Clean up unused images
           echo 'Cleaning up old images...'
-          docker image prune -af --filter 'label=com.docker.compose.project=hello-api'
-          docker image prune -af --filter 'dangling=true'
+          docker image prune -f
+
+          # Remove old versions of our image
+          docker images | grep 'hello-service' | grep -v 'latest' | awk '{print $3}' | xargs -r docker rmi -f
+
+          # Final cleanup of any remaining unused images
+          docker system prune -f
