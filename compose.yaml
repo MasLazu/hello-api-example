@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  hello-api:
+    image: ${DOCKER_IMAGE:-yourusername/hello-service:latest}
+    container_name: hello-api
+    restart: always
+    ports:
+      - "${PORT:-8080}:80"    
+    environment:
+      - PORT=80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/hello"]  
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  logs:
+    driver: local

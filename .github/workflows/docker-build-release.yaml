@@ -1,12 +1,12 @@
-name: Docker Build and Push
+name: Docker Build, Push, and Deploy
 
 on:
   release:
     types: [published]
 
 jobs:
-  docker-build:
-    name: Build and Push Docker Image
+  publish:
+    name: Build, Push, and Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -39,3 +39,34 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    name: Deploy to VM
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Deploy to VM
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/hello-service:latest
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          # Copy docker-compose file
+          sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_HOST:~/
+
+          # Execute deployment commands
+          sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_USER@$VM_HOST "
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
+            docker pull ${DOCKER_IMAGE}
+            docker-compose down
+            docker-compose up -d
+          "
