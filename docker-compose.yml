@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   hello-api:
-    image: ${DOCKER_IMAGE}
+    image: ${DOCKER_IMAGE:?err}
     container_name: hello-api
     restart: always
     ports:

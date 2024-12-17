@@ -60,13 +60,21 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          # Copy docker-compose file
-          sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_HOST:~/
+          # Create .env file
+          echo "DOCKER_IMAGE=$DOCKER_IMAGE" > .env
+
+          # Copy files to VM
+          sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no docker-compose.yml .env $VM_USER@$VM_HOST:~/
 
           # Execute deployment commands
           sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_USER@$VM_HOST "
-            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
-            docker pull ${DOCKER_IMAGE}
+            echo '${{ secrets.DOCKERHUB_TOKEN }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+            docker-compose pull
             docker-compose down
             docker-compose up -d
           "
+
+          # Clean up unused images
+          echo 'Cleaning up old images...'
+          docker image prune -af --filter 'label=com.docker.compose.project=hello-api'
+          docker image prune -af --filter 'dangling=true'
